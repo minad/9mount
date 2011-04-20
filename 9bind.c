@@ -9,37 +9,25 @@
 #include <sys/stat.h>
 #include <sys/mount.h>
 
-int
-main(int argc, char **argv)
-{
-	char *old = NULL, *new = NULL;
-	struct stat stbuf;
+int main(int argc, char* argv[]) {
+	if (argc != 3) {
+                fprintf(stderr, "usage: 9bind old new\n");
+                return 1;
+        }
 
-	while (*++argv) {
-		if (!old) {
-			old = *argv;
-		} else if (!new) {
-			new = *argv;
-		} else {
-			errx(1, "%s: too many arguments", *argv);
-		}
-	}
-
-	if (!old || !new) {
-		errx(1, "usage: 9bind old new");
-	}
+        char* old = argv[1];
+        char* new = argv[2];
 
 	/* Make sure mount exists, is writable, and not sticky */
-	if (stat(new, &stbuf) || access(new, W_OK)) {
+	struct stat st;
+	if (stat(new, &st) || access(new, W_OK))
 		err(1, "%s", new);
-	}
-	if (stbuf.st_mode & S_ISVTX) {
-		errx(1, "%s: refusing to bind over sticky directory", new);
-	}
 
-	if (mount(old, new, NULL, MS_BIND, NULL)) {
+	if (st.st_mode & S_ISVTX)
+		errx(1, "%s: refusing to bind over sticky directory", new);
+
+	if (mount(old, new, 0, MS_BIND, 0))
 		err(1, "mount");
-	}
 
 	return 0;
 }
