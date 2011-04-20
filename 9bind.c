@@ -1,11 +1,10 @@
-/* © 2008 sqweek <sqweek@gmail.com>
- * See COPYING for details.
- */
+// © 2008 sqweek <sqweek@gmail.com>
+// © 2011 minad  <mail@daniel-mendler.de>
+// See COPYING for details.
 #include <err.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
-
 #include <sys/stat.h>
 #include <sys/mount.h>
 
@@ -18,11 +17,12 @@ int main(int argc, char* argv[]) {
         char* old = argv[1];
         char* new = argv[2];
 
-	/* Make sure mount exists, is writable, and not sticky */
+	// Make sure mount exists and is writable
 	struct stat st;
 	if (stat(new, &st) || access(new, W_OK))
 		err(1, "%s", new);
 
+        // Make sure mount is not sticky
 	if (st.st_mode & S_ISVTX)
 		errx(1, "%s: refusing to bind over sticky directory", new);
 

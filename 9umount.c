@@ -1,13 +1,12 @@
-/* © 2008 sqweek <sqweek@gmail.com>
- * See COPYING for details.
- */
+// © 2008 sqweek <sqweek@gmail.com>
+// © 2011 minad  <mail@daniel-mendler.de>
+// See COPYING for details.
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 #include <err.h>
 #include <limits.h>
-
 #include <sys/types.h>
 #include <sys/mount.h>
 #include <mntent.h>

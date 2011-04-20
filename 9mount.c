@@ -1,6 +1,6 @@
-/* © 2008 sqweek <sqweek@gmail.com>
- * See COPYING for details.
- */
+// © 2008 sqweek <sqweek@gmail.com>
+// © 2011 minad  <mail@daniel-mendler.de>
+// See COPYING for details.
 #include <err.h>
 #include <mntent.h>
 #include <string.h>
@@ -9,7 +9,6 @@
 #include <stdarg.h>
 #include <regex.h>
 #include <unistd.h>
-
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
@@ -37,6 +36,7 @@ struct {
         { 0,       0     },
 };
 
+// Append option string to dest
 char* append(char **dest, size_t *destlen, char *fmt, ...) {
         char src[64];
         va_list ap;
@@ -56,6 +56,7 @@ char* append(char **dest, size_t *destlen, char *fmt, ...) {
 	return *dest;
 }
 
+// Check if string matches regex
 int match(const char* pattern, const char* str) {
         regex_t re;
         if (regcomp(&re, pattern, REG_EXTENDED|REG_NOSUB) != 0)
@@ -65,11 +66,13 @@ int match(const char* pattern, const char* str) {
         return !status;
 }
 
+// Check argument for invalid characters
 void checkarg(const char* arg) {
         if (!match("^[A-Za-z0-9_-]+$", arg))
                 errx(1, "%s: argument contains invalid characters", arg);
 }
 
+// Resolve hostname and return ip string
 char* resolve_host(const char* addr) {
         static char host[256];
         struct addrinfo* ai;
@@ -82,6 +85,7 @@ char* resolve_host(const char* addr) {
         return host;
 }
 
+// Resolve port number from /etc/services
 int resolve_port(const char* port) {
         if (match("^[0-9]+$", port))
                 return atoi(port);
@@ -133,11 +137,12 @@ int main(int argc, char *argv[]) {
 	if(!pw)
 		err(1, "who are you? getpwuid failed");
 
-	// Make sure mount exists, is writable, and not sticky
+	// Make sure mount exists and is writable
         struct stat st;
 	if (stat(mountpt, &st) || access(mountpt, W_OK))
 		err(1, "%s", mountpt);
 
+        // Make sure mount is not sticky
 	if (st.st_mode & S_ISVTX)
 		errx(1, "%s: refusing to mount over sticky directory", mountpt);
 
@@ -147,16 +152,23 @@ int main(int argc, char *argv[]) {
 		errx(1, "out of memory");
 
         char* addr;
+        // Stdin/Stdout
 	if (!strcmp(dial, "-")) {
 		addr = "nodev";
 		append(&opts, &optlen, "trans=fd,rfdno=0,wrfdno=1");
-	} else if (strstr(dial, "virtio:") == dial) {
+	}
+        // Virtio transport "virtio:channel"
+        else if (strstr(dial, "virtio:") == dial) {
                 addr = dial + 7;
                 append(&opts, &optlen, "trans=virtio");
-        } else if (strchr(dial, '/') || (!stat(dial, &st) && S_ISSOCK(st.st_mode))) {
+        }
+        // Unix socket "path/to/socket"
+        else if (strchr(dial, '/') || (!stat(dial, &st) && S_ISSOCK(st.st_mode))) {
                 addr = dial;
                 append(&opts, &optlen, "trans=unix");
-        } else {
+        }
+        // TCP transport "hostname:port"
+        else {
                 char* port = strchr(dial, ':');
                 if (!port)
                         errx(1, "invalid dial %s", dial);
@@ -165,16 +177,20 @@ int main(int argc, char *argv[]) {
                 append(&opts, &optlen, "trans=tcp,port=%d", resolve_port(port));
         }
 
+        // Name of the exported filetree
 	if (aname) {
                 checkarg(aname);
 		append(&opts, &optlen, "aname=%s", aname);
 	}
 
+        // Caching
 	if (cache) {
-                checkarg(cache);
+                if (strcmp(cache, "loose") && strcmp(cache, "fscache"))
+                        errx(1, "cache must be loose or fscache");
 		append(&opts, &optlen, "cache=%s", cache);
 	}
 
+        // Debugging options (Comma separated options)
 	if (debugstr) {
                 char* flag;
                 int debug = 0;
@@ -192,25 +208,32 @@ int main(int argc, char *argv[]) {
 		append(&opts, &optlen, "debug=0x%04x", debug);
 	}
 
+        // The number of bytes to use for 9p packet payload
 	if (maxdata > 0)
 		append(&opts, &optlen, "maxdata=%d", maxdata);
 
+        // User name to attempt mount as on the remote server
         char* user = getenv("USER");
 	if (!user)
 		user = pw->pw_name;
         checkarg(user);
 	append(&opts, &optlen, "uname=%s", user);
 
+        // Access mode
 	if (accessopt < 0)
 		append(&opts, &optlen, "access=any");
 	else if (accessopt)
 		append(&opts, &optlen, "access=%d", accessopt);
 
+        // Force legacy mode
 	if (!dotu)
 		append(&opts, &optlen, "noextend");
+
+        // Do not map special files - represent them as normal files.
 	if (!dev)
 		append(&opts, &optlen, "nodevmap");
 
+        // Attempt to mount as a particular uid
 	if (uidgid)
                 append(&opts, &optlen, "dfltuid=%d,dfltgid=%d", getuid(), getgid());
 
