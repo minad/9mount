@@ -17,18 +17,19 @@ int indir(struct mntent *mnt, const char *dir) {
 }
 
 int mountedby(struct mntent *mnt, const char *user) {
-        char* s = strdup(mnt->mnt_opts);
-	if (!s)
+	char* ds = strdup(mnt->mnt_opts);
+	if (!ds)
 		errx(1, "out of memory");
+	char* s = ds;
         char* tok;
         int ret = 0;
         while ((tok = strsep(&s, ","))) {
-		if (strstr(tok, "name=") == tok) {
-			ret = strcmp(tok + 5, user) == 0;
+		if (strstr(tok, "uname=") == tok) {
+			ret = strcmp(tok + 6, user) == 0;
                         break;
 		}
 	}
-	free(s);
+	free(ds);
 	return ret;
 }
 
