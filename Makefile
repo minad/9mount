@@ -1,4 +1,4 @@
-CFLAGS=-Wall
+CFLAGS+=-Wall
 
 all: 9mount 9umount 9bind
 
